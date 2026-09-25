@@ -31,6 +31,13 @@ def main():
         want = sorted({(s["px"], s["px"]) for s in report["strikes"]})
         if ppems != want:
             fail(f"strikes {ppems} != report {want}")
+        for s in font[tag].strikes:
+            px = s.bitmapSizeTable.ppemX
+            total = (s.bitmapSizeTable.hori.ascender
+                     - s.bitmapSizeTable.hori.descender)
+            if total < px * 0.5 or total > px * 1.5:
+                fail(f"strike {px}px line height {total} far from ppem "
+                     f"(want ~{px}; merged-into-one-OTB must keep per-size metrics)")
         print(f"check-merged: OK: {fam}, {len(ppems)} strikes "
               f"{sorted(p for p, _ in ppems)}px")
     finally:

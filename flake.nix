@@ -374,7 +374,7 @@
           # ---- merged: DER Font. Ein Strike pro px, Gewinner per priority.
           merged = pkgs.stdenvNoCC.mkDerivation {
             pname = "muteshebbek";
-            version = "1";
+            version = "2";
             src = ./tools/build-merged.py;
             dontUnpack = true;
             dontConfigure = true;

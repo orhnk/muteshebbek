@@ -21,6 +21,29 @@ import sys
 FAMILY = "Muteshebbek"
 
 
+def strike_metrics(entry, px):
+    """(ascent, descent) for one strike, descent positive.
+
+    fonttosfnt stamps every strike with the global max (currently 52/-12
+    from the 64px strike), which makes small sizes space lines ~64px apart.
+    Prefer the source header values (sizes.json: BDF FONT_ASCENT/DESCENT,
+    PCF accelerators), then the BDF bounding box, then a px-proportional
+    split as last resort.
+    """
+    asc, desc = entry.get("ascent"), entry.get("descent")
+    if (isinstance(asc, int) and isinstance(desc, int)
+            and asc > 0 and desc >= 0 and asc + desc <= 2 * px + 4):
+        return asc, desc
+    bb = entry.get("bbox")
+    if (isinstance(bb, list) and len(bb) == 4
+            and all(isinstance(v, int) for v in bb)):
+        a, d = bb[1] + bb[3], -bb[3]
+        if a > 0 and d >= 0 and a + d <= 2 * px + 4:
+            return a, d
+    a = max(1, round(px * 0.8))
+    return a, px - a
+
+
 def regular_score(entry):
     """Lower = more regular. Excludes icon variants (returns None)."""
     name = entry["path"].lower()
@@ -92,8 +115,10 @@ def main():
             continue
         contender, e = picked
         full = os.path.join(pkgmap[contender], "share", "fonts", e["path"])
+        asc, desc = strike_metrics(e, px)
         strikes.append({"px": px, "package": contender, "file": e["path"],
                         "format": e["format"], "sha256": e["sha256"],
+                        "ascent": asc, "descent": desc,
                         "fullpath": full})
 
     if not strikes:
@@ -118,13 +143,37 @@ def main():
             name.setName(f"{FAMILY} Regular", 4, *plat)
             name.setName(f"{FAMILY}-Regular", 6, *plat)
             name.setName(FAMILY, 16, *plat)
+        # Per-strike line metrics: fonttosfnt stamps every strike with the
+        # global max ascender/descender, so small sizes inherit the 64px
+        # strike's line height. Restore each strike's own values instead.
+        want = {s["px"]: (s["ascent"], s["descent"]) for s in strikes}
+        for tag in ("EBLC", "CBLC"):
+            if tag not in font:
+                continue
+            for st in font[tag].strikes:
+                px = st.bitmapSizeTable.ppemX
+                if px not in want:
+                    print(f"WARN: no metrics for {px}px strike, kept as-is",
+                          file=sys.stderr)
+                    continue
+                asc, desc = want[px]
+                st.bitmapSizeTable.hori.ascender = asc
+                st.bitmapSizeTable.hori.descender = -desc
+                st.bitmapSizeTable.vert.ascender = asc
+                st.bitmapSizeTable.vert.descender = -desc
+        # Global Win metrics must agree with hhea/typo (≈1em line) instead
+        # of the head-bbox union (≈1.36em), or Win-metric apps add leading.
+        os2 = font["OS/2"]
+        os2.usWinAscent = max(0, font["hhea"].ascent)
+        os2.usWinDescent = max(0, -font["hhea"].descent)
         font.save(args.out)
     finally:
         font.close()
 
     report = {"font": os.path.basename(args.out), "family": FAMILY,
               "generated_by": "tools/build-merged.py via winners.json",
-              "strikes": [{k: s[k] for k in ("px", "package", "file", "format", "sha256")}
+              "strikes": [{k: s[k] for k in ("px", "package", "file", "format",
+                                            "sha256", "ascent", "descent")}
                           for s in strikes],
               "skipped": skipped}
     with open(args.report, "w", encoding="utf-8") as f:

@@ -89,9 +89,9 @@ def parse_bdf(path):
                     info["bbox"] = [_int_or_none(p) for p in parts[1:5]]
             elif line.startswith("FONT "):
                 info["xlfd"] = line[5:].strip() or None
-            elif line == "STARTPROPERTIES":
+            elif line == "STARTPROPERTIES" or line.startswith("STARTPROPERTIES "):
                 in_props = True
-            elif line == "ENDPROPERTIES":
+            elif line == "ENDPROPERTIES" or line.startswith("ENDPROPERTIES "):
                 in_props = False
             elif in_props:
                 key, _, val = line.partition(" ")
@@ -186,6 +186,14 @@ def parse_pcf(data):
         pixel_size = _xlfd_pixel_size(xlfd)
     tenths = prop_int("POINT_SIZE")
     res_x, res_y = prop_int("RESOLUTION_X"), prop_int("RESOLUTION_Y")
+    ascent, descent = prop_int("FONT_ASCENT"), prop_int("FONT_DESCENT")
+    if ascent is None or descent is None:
+        # Most PCFs omit these PROPERTIES; accelerators always carry them.
+        acc_asc, acc_desc = _parse_pcf_accelerators(data, tables)
+        if ascent is None:
+            ascent = acc_asc
+        if descent is None:
+            descent = acc_desc
     return {
         "pcf_magic": "swapped" if swapped_magic else "standard",
         "pixel_size": pixel_size,
@@ -193,8 +201,8 @@ def parse_pcf(data):
         "dpi": [res_x, res_y] if res_x is not None or res_y is not None else None,
         "xlfd": xlfd,
         "xlfd_pixel_size": _xlfd_pixel_size(xlfd),
-        "ascent": prop_int("FONT_ASCENT"),
-        "descent": prop_int("FONT_DESCENT"),
+        "ascent": ascent,
+        "descent": descent,
         "avg_width_tenths": prop_int("AVERAGE_WIDTH"),
         "spacing": prop_str("SPACING"),
         "glyphs": glyphs,
@@ -283,6 +291,29 @@ def _parse_pcf_metrics_count(data, toff, lsb):
         return count, 5
     count = _u32(data, toff + 4, lsb)  # 12 bytes/glyph
     return count, 12
+
+
+def _parse_pcf_accelerators(data, tables):
+    """fontAscent/fontDescent from ACCELERATORS tables (types 256, then 2).
+
+    Many PCFs (profont, tamsyn, terminus, dina, ...) carry no FONT_ASCENT /
+    FONT_DESCENT PROPERTIES, but accelerators always have them. Descent is
+    returned positive to match the BDF FONT_DESCENT sign convention.
+    Returns (ascent|None, descent|None).
+    """
+    for ttype in (256, 2):  # BDF_ACCELERATORS, ACCELERATORS
+        if ttype not in tables:
+            continue
+        fmt, _, toff = tables[ttype]
+        for lsb in (bool(fmt & 0x4), not bool(fmt & 0x4)):
+            try:
+                asc = struct.unpack_from("<i" if lsb else ">i", data, toff + 12)[0]
+                desc = struct.unpack_from("<i" if lsb else ">i", data, toff + 16)[0]
+                if 0 < asc <= 512 and 0 <= desc <= 512:
+                    return asc, desc
+            except (struct.error, IndexError):
+                pass
+    return None, None
 
 
 # --------------------------------------------------------------- SFNT ---

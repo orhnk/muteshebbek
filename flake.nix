@@ -345,7 +345,7 @@
             (lib.concatMapStringsSep "\n"
               (logical: "${namedFonts.${logical}} ${logical}")
               (builtins.attrNames namedFonts));
-          sizesScanPython = pkgs.python3.withPackages (ps: with ps; [ fonttools ]);
+          sizesScanPython = pkgs.python3.withPackages (ps: with ps; [ fonttools freetype-py ]);
           sizesDb = pkgs.stdenvNoCC.mkDerivation {
             pname = "muteshebbek-sizes-db";
             version = "1";
@@ -374,8 +374,8 @@
           # ---- merged: DER Font. Ein Strike pro px, Gewinner per priority.
           merged = pkgs.stdenvNoCC.mkDerivation {
             pname = "muteshebbek";
-            version = "2";
-            src = ./tools/build-merged.py;
+            version = "3";
+            src = ./tools;
             dontUnpack = true;
             dontConfigure = true;
             dontBuild = true;
@@ -383,9 +383,11 @@
             installPhase = ''
               runHook preInstall
               mkdir -p "$out/share/fonts/OTB" "$out/share/muteshebbek"
-              python3 "$src" --pkgmap ${pkgMapTxt} \
+              python3 "$src/build-merged.py" --pkgmap ${pkgMapTxt} \
                 --sizes ${sizesDb}/share/muteshebbek/sizes.json \
                 --winners ${sizesDb}/share/muteshebbek/winners.json \
+                --priority ${./priority.json} \
+                --upscale ${./upscale.json} \
                 --out "$out/share/fonts/OTB/Muteshebbek.otb" \
                 --report "$out/share/muteshebbek/merged-report.json"
               runHook postInstall
@@ -474,7 +476,9 @@
               dry-run-prog = pkgs.writeShellScriptBin "muteshebbek-dry-run" ''
                 exec ${sizesScanPython}/bin/python3 ${./tools/build-merged.py} --dry-run \
                   --sizes ${sizesDb}/share/muteshebbek/sizes.json \
-                  --winners ${sizesDb}/share/muteshebbek/winners.json
+                  --winners ${sizesDb}/share/muteshebbek/winners.json \
+                  --priority ${./priority.json} \
+                  --upscale ${./upscale.json}
               '';
             in
             {
@@ -495,6 +499,11 @@
             priority-valid = pkgs.runCommand "check-priority"
               { nativeBuildInputs = [ sizesScanPython ]; } ''
               python3 ${./tools/check-priority.py} ${./priority.json} ${lib.escapeShellArgs (builtins.attrNames namedFonts)}
+              touch "$out"
+            '';
+            upscale-valid = pkgs.runCommand "check-upscale"
+              { nativeBuildInputs = [ sizesScanPython ]; } ''
+              python3 ${./tools/check-upscale.py} ${./upscale.json} ${lib.escapeShellArgs (builtins.attrNames namedFonts)}
               touch "$out"
             '';
             merged-valid = pkgs.runCommand "check-merged"

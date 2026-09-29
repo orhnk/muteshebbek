@@ -374,7 +374,7 @@
           # ---- merged: DER Font. Ein Strike pro px, Gewinner per priority.
           merged = pkgs.stdenvNoCC.mkDerivation {
             pname = "muteshebbek";
-            version = "3";
+            version = "4";
             src = ./tools;
             dontUnpack = true;
             dontConfigure = true;

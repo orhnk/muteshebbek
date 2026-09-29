@@ -6,11 +6,14 @@ BDF (preferred) or PCF file at exactly that pixel size (regular weight,
 no icon variants), then merges all selected files into a single OTB with
 fonttosfnt (one strike per input) and brands it "Muteshebbek".
 
-upscale.json declares extra integer scales per package (e.g. creep [2]):
+upscale.json declares extra integer scales per package, either as a
+factor list (all native sizes) or as {source_px: [factors]} for selected
+sizes, e.g. cherry-bitmap 11px * 2 = 22px strike:
 the native winning file is pixel-doubled into a synthetic BDF strike at
-px*factor, which then competes with native contenders by package priority
-(same as natives; visible via --dry-run). This gives small-only fonts a
-pixel-perfect big size instead of losing to interpolated scaling.
+px*factor. A declared scaled strike WINS its target over natives;
+package priority only orders multiple scaled contenders for one target
+(all visible via --dry-run). This gives small-only fonts a pixel-perfect
+big size instead of losing to interpolated scaling.
 
 Usage:
   build-merged.py --pkgmap pkgmap.txt --sizes sizes.json --winners winners.json \\
@@ -246,12 +249,37 @@ def main():
     with open(args.upscale, encoding="utf-8") as f:
         upscale = json.load(f).get("upscale", {})
     rank = {name: i for i, name in enumerate(priority)}
-    for pkg, factors in upscale.items():
-        if (not isinstance(factors, list) or not factors
-                or any(not isinstance(x, int) or x < 2 for x in factors)):
-            print(f"ERROR: upscale[{pkg}] must list ints >= 2",
-                  file=sys.stderr)
+    if not isinstance(upscale, dict):
+        print("ERROR: upscale.json must hold an 'upscale' object",
+              file=sys.stderr)
+        sys.exit(1)
+    # Normalize to {pkg: {src_px: [factors]}}; a bare factor list means
+    # "all native sizes of that package".
+    norm_upscale = {}
+    for pkg, spec in upscale.items():
+        if isinstance(spec, list):
+            norm_upscale[pkg] = ("all", spec)
+        elif isinstance(spec, dict) and spec:
+            try:
+                norm_upscale[pkg] = ("sizes",
+                                     {int(k): v for k, v in spec.items()})
+            except (TypeError, ValueError):
+                print(f"ERROR: upscale[{pkg}] source sizes must be ints",
+                      file=sys.stderr)
+                sys.exit(1)
+        else:
+            print(f"ERROR: upscale[{pkg}] must be a factor list or "
+                  f"{{source_px: [factors]}}", file=sys.stderr)
             sys.exit(1)
+        for factors in (norm_upscale[pkg][1].values()
+                        if norm_upscale[pkg][0] == "sizes"
+                        else [norm_upscale[pkg][1]]):
+            if (not isinstance(factors, list) or not factors
+                    or any(not isinstance(x, int) or x < 2
+                           for x in factors)):
+                print(f"ERROR: upscale[{pkg}] factors must be ints >= 2",
+                      file=sys.stderr)
+                sys.exit(1)
 
     for e in files:
         e["_pkg"] = e["package"]
@@ -291,23 +319,32 @@ def main():
         else:
             native_pick[px] = picked
 
-    # 2) scaled candidates: every declared package offers each of its
-    # native viable sizes scaled by each factor -- independent of whether
-    # it wins natively (a small-only font may still win big via priority).
+    # 2) scaled candidates from upscale declarations. A declared scaled
+    # strike wins its target over natives; package priority only orders
+    # multiple scaled contenders for one target.
     scaled_cands = {}  # target px -> [(pkg, src_px, entry, factor)]
-    for pkg, factors in upscale.items():
-        native_pxs = sorted({px for (p, px) in by_pkg_px if p == pkg})
-        for px in native_pxs:
-            e = best_native(pkg, px)
+    for pkg in sorted(norm_upscale):
+        kind, spec = norm_upscale[pkg]
+        if kind == "all":
+            jobs = [(px, f)
+                    for px in sorted({p for (p, px) in by_pkg_px if p == pkg})
+                    for f in spec]
+        else:
+            jobs = [(src_px, f)
+                    for src_px in sorted(spec)
+                    for f in spec[src_px]]
+        for src_px, factor in jobs:
+            e = best_native(pkg, src_px)
             if e is None:
+                print(f"WARN: upscale {pkg} {src_px}px has no usable "
+                      f"BDF/PCF, skipped", file=sys.stderr)
                 continue
-            for factor in factors:
-                scaled_cands.setdefault(px * factor, []).append(
-                    (pkg, px, e, factor))
+            scaled_cands.setdefault(src_px * factor, []).append(
+                (pkg, src_px, e, factor))
 
-    # 3) final selection: natives and scaled compete by package priority
-    # (native wins ties); scaled files are materialized lazily, failures
-    # fall through to the next contender.
+    # 3) final selection: declared scaled strikes win their target over
+    # natives (priority only orders scaled-vs-scaled); scaled files are
+    # materialized lazily, failures fall through to the next contender.
     strikes = []
     tmpdir = None
     scaled_cache = {}
@@ -329,16 +366,16 @@ def main():
         return path
 
     for px in sorted(set(native_pick) | set(scaled_cands)):
-        ordered = []  # (rank, native_first, kind, payload)
+        ordered = []  # (scaled_first, rank, payload)
+        for (pkg, src_px, e, factor) in scaled_cands.get(px, []):
+            ordered.append((0, rank.get(pkg, len(rank)),
+                            ("scaled", pkg, src_px, e, factor)))
         if str(px) in winners:
             for contender in winners[str(px)]["contenders"]:
                 e = best_native(contender, px)
                 if e is not None:
-                    ordered.append((rank.get(contender, len(rank)), 0,
+                    ordered.append((1, rank.get(contender, len(rank)),
                                     ("native", contender, e)))
-        for (pkg, src_px, e, factor) in scaled_cands.get(px, []):
-            ordered.append((rank.get(pkg, len(rank)), 1,
-                            ("scaled", pkg, src_px, e, factor)))
         ordered.sort(key=lambda t: (t[0], t[1]))
         picked = None
         for _, _, payload in ordered:

@@ -1,12 +1,11 @@
 {
-  "_comment": "Zusaetzliche Integer-Skalen pro Font (pixel-perfect 2x statt interpoliert). Key = logischer Paketname wie in priority.json. Faktoren wirken auf die nativen Gewinner-Groessen: z.B. creep 16px * 2 = 32px-Strike. Skalierte Strikes konkurrieren per priority.json mit nativen (sichtbar via nix run .#dry-run); neue px-Werte (z.B. 40) entstehen automatisch.",
+  "_comment": "Zusaetzliche Integer-Skalen: {paket: {quell-px: [faktoren]}} oder kurz {paket: [faktoren]} (= alle nativen Groessen). Beispiel: cherry-bitmap 11px * 2 = 22px-Strike, pixel-perfekt statt interpoliert. Ein deklarierter skalierter Strike GEWINNT sein Ziel gegen native (Priority ordnet nur mehrere skalierte Bewerber); sichtbar via nix run .#dry-run.",
   "upscale": {
-    "scientifica": [2],
-    "tewi": [2],
-    "creep": [2],
-    "kakwa": [2],
-    "tamsyn": [2],
-    "gomme": [2],
-    "knxt": [2]
+    "dina": { "8": [2] },
+    "uushi-lemon": { "10": [2] },
+    "cherry-bitmap": { "11": [2] },
+    "zevv-peep": { "14": [2] },
+    "cozette": { "13": [2] },
+    "tamzen": { "12": [2], "9": [2] }
   }
 }

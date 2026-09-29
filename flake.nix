@@ -396,12 +396,43 @@
             };
           };
 
+          # ---- all-fonts-preview: Galerie aller Fonts in allen nativen
+          # px-Groessen (BDF/PCF per Pillow gerendert, 1:1 + 3x-Zoom) plus
+          # alle Strikes des gemergten OTB. Aufruf:
+          #   nix build .#all-fonts-preview -o result-all-fonts-preview
+          previewsPython = pkgs.python3.withPackages (ps: with ps; [ fonttools pillow ]);
+          allFontsPreview = pkgs.stdenvNoCC.mkDerivation {
+            pname = "muteshebbek-all-fonts-preview";
+            version = "1";
+            src = ./tools/render-previews.py;
+            dontUnpack = true;
+            dontConfigure = true;
+            dontBuild = true;
+            nativeBuildInputs = [ previewsPython ];
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out/share/muteshebbek"
+              python3 "$src" --pkgmap ${pkgMapTxt} \
+                --sizes ${sizesDb}/share/muteshebbek/sizes.json \
+                --merged-otb ${merged}/share/fonts/OTB/Muteshebbek.otb \
+                --merged-report ${merged}/share/muteshebbek/merged-report.json \
+                --outdir "$out/share/muteshebbek/all-fonts-preview"
+              runHook postInstall
+            '';
+            meta = with lib; {
+              description = "Muteshebbek Vorschau-Galerie: jeder Font in jeder nativen px-Groesse (PNG + index.html)";
+              license = licenses.free;
+              platforms = platforms.all;
+            };
+          };
+
           manifest = ./fonts.json;
         in
         {
           packages = namedFonts // {
             inherit all merged;
             "sizes-db" = sizesDb;
+            "all-fonts-preview" = allFontsPreview;
             default = all;
             fonts-manifest = pkgs.stdenvNoCC.mkDerivation {
               pname = "muteshebbek-fonts-manifest";
@@ -474,6 +505,11 @@
             merged-render = pkgs.runCommand "check-merged-render"
               { nativeBuildInputs = [ (pkgs.python3.withPackages (ps: with ps; [ pillow ])) ]; } ''
               python3 ${./tools/check-render.py} ${merged}/share/fonts/OTB/Muteshebbek.otb ${merged}/share/muteshebbek/merged-report.json
+              touch "$out"
+            '';
+            previews-valid = pkgs.runCommand "check-previews"
+              { nativeBuildInputs = [ previewsPython ]; } ''
+              python3 ${./tools/check-previews.py} ${allFontsPreview}/share/muteshebbek/all-fonts-preview
               touch "$out"
             '';
           };

@@ -436,6 +436,21 @@
             '';
           };
 
+          # ---- dry-run: welche Source-Font gewinnt pro px (baut nichts).
+          # Aufruf: nix run .#dry-run  (liest priority.json + sizes-db)
+          apps.dry-run =
+            let
+              dry-run-prog = pkgs.writeShellScriptBin "muteshebbek-dry-run" ''
+                exec ${sizesScanPython}/bin/python3 ${./tools/build-merged.py} --dry-run \
+                  --sizes ${sizesDb}/share/muteshebbek/sizes.json \
+                  --winners ${sizesDb}/share/muteshebbek/winners.json
+              '';
+            in
+            {
+              type = "app";
+              program = "${dry-run-prog}/bin/muteshebbek-dry-run";
+            };
+
           checks = {
             manifest-exists = pkgs.runCommand "check-manifest" { } ''
               test -f ${manifest} && touch "$out"
@@ -468,5 +483,6 @@
       packages = forEachSystem (pkgs: (mkSystem pkgs).packages);
       devShells = forEachSystem (pkgs: (mkSystem pkgs).devShells);
       checks = forEachSystem (pkgs: (mkSystem pkgs).checks);
+      apps = forEachSystem (pkgs: (mkSystem pkgs).apps);
     };
 }

@@ -9,6 +9,8 @@ fonttosfnt (one strike per input) and brands it "Muteshebbek".
 Usage:
   build-merged.py --pkgmap pkgmap.txt --sizes sizes.json --winners winners.json \\
       --out Muteshebbek.otb --report merged-report.json
+  build-merged.py --dry-run --sizes sizes.json --winners winners.json
+      (prints which source font each px size would use, builds nothing)
 """
 
 import argparse
@@ -66,22 +68,45 @@ def regular_score(entry):
     return score
 
 
+def print_dry_run(strikes, skipped):
+    """Human-readable strike table for --dry-run (no files written)."""
+    print(f"{'px':>4}  {'package':<14}  {'asc':>3} {'desc':>4}  format  file")
+    for s in strikes:
+        print(f"{s['px']:4d}  {s['package']:<14}  {s['ascent']:3d} "
+              f"{s['descent']:4d}  {s['format']:<6}  {s['file']}")
+    for sk in skipped:
+        print(f"{sk['px']:4d}  SKIPPED (contenders="
+              f"{','.join(sk['contenders'])}): {sk['reason']}")
+    print(f"dry-run: {len(strikes)} strikes, {len(skipped)} skipped "
+          f"(nothing written)")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pkgmap", required=True)
+    ap.add_argument("--pkgmap", required=False, default=None)
     ap.add_argument("--sizes", required=True)
     ap.add_argument("--winners", required=True)
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--report", required=True)
+    ap.add_argument("--out", required=False, default=None)
+    ap.add_argument("--report", required=False, default=None)
+    ap.add_argument("--dry-run", action="store_true",
+                    help="print the strike table without running fonttosfnt")
     args = ap.parse_args()
 
+    if args.dry_run:
+        if args.out or args.report:
+            print("dry-run: ignoring --out/--report (nothing is written)",
+                  file=sys.stderr)
+    elif not args.pkgmap or not args.out or not args.report:
+        ap.error("--pkgmap/--out/--report are required without --dry-run")
+
     pkgmap = {}
-    with open(args.pkgmap, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                store_path, _, logical = line.rpartition(" ")
-                pkgmap[logical] = store_path
+    if args.pkgmap:
+        with open(args.pkgmap, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    store_path, _, logical = line.rpartition(" ")
+                    pkgmap[logical] = store_path
     with open(args.sizes, encoding="utf-8") as f:
         files = json.load(f)["files"]
     with open(args.winners, encoding="utf-8") as f:
@@ -114,7 +139,8 @@ def main():
             print(f"WARN: no BDF/PCF for {px}px, skipped ({reason})", file=sys.stderr)
             continue
         contender, e = picked
-        full = os.path.join(pkgmap[contender], "share", "fonts", e["path"])
+        base = pkgmap.get(contender, "")
+        full = os.path.join(base, "share", "fonts", e["path"]) if base else ""
         asc, desc = strike_metrics(e, px)
         strikes.append({"px": px, "package": contender, "file": e["path"],
                         "format": e["format"], "sha256": e["sha256"],
@@ -124,6 +150,10 @@ def main():
     if not strikes:
         print("ERROR: nothing selected", file=sys.stderr)
         sys.exit(1)
+
+    if args.dry_run:
+        print_dry_run(strikes, skipped)
+        return 0
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     inputs = [s["fullpath"] for s in strikes]

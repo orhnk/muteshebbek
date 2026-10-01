@@ -15,10 +15,19 @@ package priority only orders multiple scaled contenders for one target
 (all visible via --dry-run). This gives small-only fonts a pixel-perfect
 big size instead of losing to interpolated scaling.
 
+Cross-application compatibility (--out-ttf): the OTB is an sfnt whose
+scalable glyphs are blank, so apps that ignore embedded bitmap strikes
+(EBLC/EBDT) render nothing. Given --out-ttf we additionally trace every
+covered glyph from the largest bitmap strike that has it (one rectangle
+contour per horizontal run of ink, nonzero winding) and fill it into the
+(blank) glyf table, then save a plain .ttf. The bitmap strikes are kept,
+so bitmap-aware renderers still get the pixel-perfect native size.
+
 Usage:
   build-merged.py --pkgmap pkgmap.txt --sizes sizes.json --winners winners.json \\
       --priority priority.json --upscale upscale.json \\
-      --out Muteshebbek.otb --report merged-report.json
+      --out Muteshebbek.otb --out-ttf Muteshebbek.ttf \\
+      --report merged-report.json
   build-merged.py --dry-run --sizes sizes.json --winners winners.json \\
       --priority priority.json --upscale upscale.json
       (prints which source font each px size would use, builds nothing)
@@ -173,6 +182,136 @@ def scale_bdf_text(text, factor):
     return "\n".join(out) + "\n"
 
 
+def parse_bdf_bitmaps(text):
+    """BDF text -> {encoding: (bbx, hex_rows)} for encoded glyphs.
+
+    bbx is the BDF BBX (width, height, xoff, yoff); yoff is the bottom
+    edge of the bitmap relative to the baseline (negative = descends).
+    rows are top-to-bottom hex strings, left-padded has needed.
+    """
+    glyphs = {}
+    enc = bbx = rows = None
+    in_bitmap = False
+    for line in text.splitlines():
+        if line.startswith("STARTCHAR "):
+            enc = bbx = rows = None
+            in_bitmap = False
+        elif line.startswith("ENCODING "):
+            parts = line.split()
+            if enc is None:  # first ENCODING line is the primary one
+                try:
+                    enc = int(parts[1])
+                except (IndexError, ValueError):
+                    enc = None
+        elif line.startswith("BBX "):
+            parts = line.split()
+            if len(parts) >= 5:
+                try:
+                    bbx = tuple(int(v) for v in parts[1:5])
+                except ValueError:
+                    bbx = None
+        elif line == "BITMAP":
+            rows = []
+            in_bitmap = True
+        elif line == "ENDCHAR":
+            in_bitmap = False
+            if enc is not None and enc >= 0 and bbx and rows is not None:
+                glyphs[enc] = (bbx, rows)
+            enc = bbx = rows = None
+        elif in_bitmap:
+            rows.append(line.strip())
+    return glyphs
+
+
+def outline_glyph(bbx, rows, scale):
+    """Trace one bitmap glyph into a TrueType glyph.
+
+    Each horizontal run of set pixels becomes one rectangle contour.
+    Every contour is wound the same way, so nonzero fill gives the union
+    of the ink and leaves counters (holes) empty. scale maps one source
+    pixel to font units (unitsPerEm / strike pixel size).
+    """
+    from fontTools.pens.ttGlyphPen import TTGlyphPen
+
+    w, h, xoff, yoff = bbx
+    pen = TTGlyphPen(None)
+    nbytes = (w + 7) // 8
+    if nbytes == 0:
+        return pen.glyph()
+    total = nbytes * 8
+    blank = "0" * (nbytes * 2)
+    for ry in range(h):
+        hexrow = (rows[ry].zfill(nbytes * 2)
+                  if ry < len(rows) else blank)
+        try:
+            val = int(hexrow, 16)
+        except ValueError:
+            continue
+        x = 0
+        while x < w:
+            if not ((val >> (total - 1 - x)) & 1):
+                x += 1
+                continue
+            x0 = x
+            while x < w and ((val >> (total - 1 - x)) & 1):
+                x += 1
+            x0u = round((xoff + x0) * scale)
+            x1u = round((xoff + x) * scale)
+            y0u = round((yoff + h - ry - 1) * scale)
+            y1u = round((yoff + h - ry) * scale)
+            pen.moveTo((x0u, y0u))
+            pen.lineTo((x1u, y0u))
+            pen.lineTo((x1u, y1u))
+            pen.lineTo((x0u, y1u))
+            pen.closePath()
+    return pen.glyph()
+
+
+def strike_bdf_text(strike, pkgmap):
+    """BDF source text for one selected strike (PCF converted on demand)."""
+    full = strike.get("fullpath") or ""
+    if full.endswith(".bdf"):
+        with open(full, encoding="ascii", errors="replace") as f:
+            return f.read()
+    entry = strike.get("_entry")
+    if entry is None:
+        raise RuntimeError("no BDF source for this strike")
+    return bdf_source_text(entry, pkgmap)
+
+
+def add_ttf_outlines(font, strikes, pkgmap):
+    """Fill the blank glyf table from the bitmap strikes (largest wins).
+
+    Returns how many glyphs got real outlines. Glyphs absent from every
+    strike stay blank (they have no ink anyway).
+    """
+    upem = font["head"].unitsPerEm
+    cmap = font.getBestCmap()
+    glyf = font["glyf"]
+    done = set()
+    by_px = {}
+    for s in strikes:
+        by_px.setdefault(s["px"], []).append(s)
+    for px in sorted(by_px, reverse=True):
+        text = strike_bdf_text(by_px[px][0], pkgmap)
+        scale = upem / px
+        for enc, (bbx, rows) in parse_bdf_bitmaps(text).items():
+            name = cmap.get(enc)
+            if name is None or name in done:
+                continue
+            glyf[name] = outline_glyph(bbx, rows, scale)
+            done.add(name)
+    if hasattr(font["maxp"], "recalc"):
+        # maxp.recalc reads each glyph's bbox; fonttosfnt leaves them lazy,
+        # so materialise the bounds first (composites included).
+        for name in font.getGlyphOrder():
+            g = glyf[name]
+            if g.numberOfContours:
+                g.recalcBounds(glyf)
+        font["maxp"].recalc(font)
+    return len(done)
+
+
 def bdf_source_text(entry, pkgmap):
     """Raw BDF text for a sizes.json entry (PCF converted via freetype)."""
     full = os.path.join(pkgmap[entry["_pkg"]], "share", "fonts", entry["path"])
@@ -221,6 +360,9 @@ def main():
     ap.add_argument("--upscale", required=True)
     ap.add_argument("--out", required=False, default=None)
     ap.add_argument("--report", required=False, default=None)
+    ap.add_argument("--out-ttf", dest="out_ttf", required=False, default=None,
+                    help="also write an outline .ttf (for apps without "
+                         "bitmap-strike/OTB support)")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the strike table without running fonttosfnt")
     args = ap.parse_args()
@@ -387,7 +529,8 @@ def main():
                 picked = {"px": px, "package": contender, "file": e["path"],
                           "format": e["format"], "sha256": e["sha256"],
                           "ascent": asc, "descent": desc,
-                          "scale": 1, "source_px": px, "fullpath": full}
+                          "scale": 1, "source_px": px, "fullpath": full,
+                          "_entry": e}
                 break
             _, pkg, src_px, e, factor = payload
             if args.dry_run:
@@ -408,7 +551,8 @@ def main():
             picked = {"px": px, "package": pkg, "file": e["path"],
                       "format": e["format"], "sha256": e["sha256"],
                       "ascent": asc * factor, "descent": desc * factor,
-                      "scale": factor, "source_px": src_px, "fullpath": path}
+                      "scale": factor, "source_px": src_px, "fullpath": path,
+                      "_entry": e}
             break
         if picked is None:
             print(f"WARN: no BDF/PCF (native or scaled) for {px}px, skipped",
@@ -435,6 +579,7 @@ def main():
 
     from fontTools.ttLib import TTFont
     font = TTFont(args.out)
+    outlined = 0
     try:
         name = font["name"]
         for plat in ((3, 1, 0x409), (1, 0, 0)):
@@ -466,6 +611,12 @@ def main():
         os2.usWinAscent = max(0, font["hhea"].ascent)
         os2.usWinDescent = max(0, -font["hhea"].descent)
         font.save(args.out)
+        if args.out_ttf:
+            os.makedirs(os.path.dirname(os.path.abspath(args.out_ttf)),
+                        exist_ok=True)
+            outlined = add_ttf_outlines(font, strikes, pkgmap)
+            font.save(args.out_ttf)
+            print(f"outlined {outlined} glyphs -> {args.out_ttf}")
     finally:
         font.close()
 
@@ -476,6 +627,10 @@ def main():
                                             "scale", "source_px")}
                           for s in strikes],
               "skipped": skipped}
+    if args.out_ttf:
+        report["ttf"] = {"file": os.path.basename(args.out_ttf),
+                         "outlined_glyphs": outlined,
+                         "outline_source": "largest bitmap strike per glyph"}
     with open(args.report, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=1, sort_keys=True)
         f.write("\n")

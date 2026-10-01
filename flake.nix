@@ -372,9 +372,12 @@
           };
 
           # ---- merged: DER Font. Ein Strike pro px, Gewinner per priority.
+          # Zusaetzlich ein TTF mit echten glyf-Outlines (aus dem jeweils
+          # groessten Bitmap-Strike getraced) fuer Apps ohne Bitmap-/OTB-
+          # Support; die Bitmap-Strikes bleiben im TTF erhalten.
           merged = pkgs.stdenvNoCC.mkDerivation {
             pname = "muteshebbek";
-            version = "4";
+            version = "5";
             src = ./tools;
             dontUnpack = true;
             dontConfigure = true;
@@ -382,18 +385,19 @@
             nativeBuildInputs = [ sizesScanPython pkgs.xorg.fonttosfnt ];
             installPhase = ''
               runHook preInstall
-              mkdir -p "$out/share/fonts/OTB" "$out/share/muteshebbek"
+              mkdir -p "$out/share/fonts/OTB" "$out/share/fonts/TTF" "$out/share/muteshebbek"
               python3 "$src/build-merged.py" --pkgmap ${pkgMapTxt} \
                 --sizes ${sizesDb}/share/muteshebbek/sizes.json \
                 --winners ${sizesDb}/share/muteshebbek/winners.json \
                 --priority ${./priority.json} \
                 --upscale ${./upscale.json} \
                 --out "$out/share/fonts/OTB/Muteshebbek.otb" \
+                --out-ttf "$out/share/fonts/TTF/Muteshebbek.ttf" \
                 --report "$out/share/muteshebbek/merged-report.json"
               runHook postInstall
             '';
             meta = with lib; {
-              description = "Muteshebbek: alle Bitmap-Fonts in einem OTB, ein Strike pro px-Groesse (Gewinner per priority.json)";
+              description = "Muteshebbek: alle Bitmap-Fonts in einem OTB plus Outline-TTF, ein Strike pro px-Groesse (Gewinner per priority.json)";
               license = licenses.free;
             };
           };
@@ -514,6 +518,11 @@
             merged-render = pkgs.runCommand "check-merged-render"
               { nativeBuildInputs = [ (pkgs.python3.withPackages (ps: with ps; [ pillow ])) ]; } ''
               python3 ${./tools/check-render.py} ${merged}/share/fonts/OTB/Muteshebbek.otb ${merged}/share/muteshebbek/merged-report.json
+              touch "$out"
+            '';
+            outline-ttf = pkgs.runCommand "check-outline-ttf"
+              { nativeBuildInputs = [ sizesScanPython ]; } ''
+              python3 ${./tools/check-ttf.py} ${merged}/share/fonts/TTF/Muteshebbek.ttf ${merged}/share/muteshebbek/merged-report.json
               touch "$out"
             '';
             previews-valid = pkgs.runCommand "check-previews"

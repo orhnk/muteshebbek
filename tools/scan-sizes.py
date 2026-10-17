@@ -447,11 +447,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pkgmap", required=True)
     ap.add_argument("--manifest", required=True)
-    ap.add_argument("--priority", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--summary", required=True)
     ap.add_argument("--compare", required=True)
-    ap.add_argument("--winners", required=True)
     args = ap.parse_args()
 
     with open(args.pkgmap, encoding="utf-8") as f:
@@ -510,11 +508,10 @@ def main():
 
     with open(args.manifest, encoding="utf-8") as f:
         manifest = json.load(f)
-    aliases = {"uushi-lemon": ["lemon", "uushi"]}
     scanned = {}
     scalable_only = set()
     for e in files:
-        for name in aliases.get(e["package"], [e["package"]]):
+        for name in [e["package"]]:
             px = scanned.setdefault(name, set())
             if isinstance(e.get("pixel_size"), int):
                 px.add(e["pixel_size"])
@@ -523,9 +520,14 @@ def main():
                     px.add(int(s["ppem"][1]))
             if e.get("scalable"):
                 scalable_only.add(name)
+    # Only report on packages that were actually scanned (the merge scans a
+    # subset), so the full-scan report still covers everything.
+    scanned_names = set(pkgmap.values())
     lines = []
     for m in manifest:
         name, claimed = m["name"], set(m.get("sizes_px", []))
+        if name not in scanned_names:
+            continue
         got = scanned.get(name, set())
         if not got:
             if name in scalable_only:
@@ -544,30 +546,9 @@ def main():
     n_sc = sum(1 for l in lines if l.startswith("SCALABLE"))
     n_nd = sum(1 for l in lines if l.startswith("NO-SCANNED-DATA"))
     print(f"compare: {n_ok} OK, {n_mm} MISMATCH, {n_sc} SCALABLE, {n_nd} NO-DATA")
-
-    # ---- winners: pro px-Groesse gewinnt hoechste Priority (priority.json)
-    with open(args.priority, encoding="utf-8") as f:
-        priority = json.load(f)["priority"]
-    rank = {name: i for i, name in enumerate(priority)}
-    px_owners = {}
-    for e in files:
-        sizes = set()
-        if isinstance(e.get("pixel_size"), int):
-            sizes.add(e["pixel_size"])
-        for s in e.get("strikes") or []:
-            if s.get("ppem"):
-                sizes.add(int(s["ppem"][1]))
-        for px in sizes:
-            px_owners.setdefault(px, set()).add(e["package"])
-    winners = {}
-    for px in sorted(px_owners):
-        contenders = sorted(px_owners[px], key=lambda n: rank.get(n, len(rank)))
-        winners[str(px)] = {"winner": contenders[0], "contenders": contenders}
-    with open(args.winners, "w", encoding="utf-8") as f:
-        json.dump({"generated_by": "tools/scan-sizes.py via priority.json",
-                   "winners": winners}, f, indent=1, sort_keys=True)
-        f.write("\n")
-    print(f"winners: {len(winners)} px-Groessen entschieden")
+    # Winners are selected purely in flake.nix from fonts.json + priority;
+    # this scan only provides the real header data (paths, metrics) and the
+    # fonts.json consistency report.
 
 
 if __name__ == "__main__":

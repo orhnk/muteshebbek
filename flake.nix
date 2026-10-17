@@ -1,5 +1,5 @@
 {
-  description = "muteshebbek - 40+ Bitmap-Fonts in einem Flake: nixpkgs-first, sonst Fetch vom Original (pixel-perfect Sammlung fuer Size-Select-Merge)";
+  description = "muteshebbek - 60+ Bitmap-Fonts in einem Flake: nixpkgs-first, sonst Fetch vom Original (pixel-perfect Sammlung fuer Size-Select-Merge)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
@@ -24,6 +24,70 @@
       mkSystem = pkgs:
         let
           lib = pkgs.lib;
+
+          # ------------------------------------------------------------------
+          # Merge-Konfiguration: Single Source of Truth fuer den Merge. Was
+          # frueher in priority.json / merge.json / upscale.json stand, lebt
+          # jetzt hier; die Python-Tools bekommen daraus generierte JSONs.
+          # ------------------------------------------------------------------
+          priority = [
+            "cozette" "uushi-lemon" "scientifica" "tewi" "creep" "kakwa"
+            "cherry-bitmap" "tamsyn" "dweep" "profont" "montecarlo"
+            "proggyfonts" "termsyn" "terminusmod" "ohsnap" "kirsch"
+            "tamzen" "gohufont" "creep2" "envypn" "dina" "unscii"
+            "ibmfonts" "misc-fixed-ucs" "artwiz-aleczapka" "tamsynmod"
+            "stlarch-font" "fixedsys-excelsior" "font-3270" "gomme"
+            "knxt" "haxor" "lode" "leggie" "vt323" "zevv-peep"
+            "press-start-2p" "silkscreen" "font-04b-03" "terminus" "spleen"
+            # --- Erweiterung: weitere echte Bitmap-Fonts aus nixpkgs ---
+            "efont" "uw-ttyp0" "unifont" "ark-pixel"
+            # --- Erweiterung: Tecate/bitmap-fonts Sammlung ---
+            "sgi" "mplus" "jmk-x11-fonts" "lokaltog-fonts" "ctrld-font"
+            "dylex" "raize" "bitocra" "speedy" "orp-font" "progsole"
+            "gilesorr" "opti" "pixelcarnage" "tobi" "erusfont" "trisk"
+            "boxxy" "kourier" "sq" "siji" "xbmicons" "clearlyu"
+          ];
+          mergeCfg = {
+            min_size_px = 7;
+            max_size_px = 100;
+            native_beats_scaled = true;
+            upscale_scope = "winners";
+            filler = { enabled = true; scope = "both"; font = "cozette-vector"; };
+            max_strikes = 0;
+            max_output_mb = 0;
+            inherit priority;
+          };
+          mergeJson = pkgs.writeText "merge.json" (builtins.toJSON mergeCfg);
+
+          # Pakete, die auch ohne nativen Gewinn hochskaliert werden.
+          upscaleForced = [ "dina" "uushi-lemon" "cherry-bitmap" "zevv-peep" "cozette" "tamzen" ];
+          fillerPackage = "cozette";
+
+          # Pure Gewinnerberechnung: pro Ziel-px gewinnt der hoechste
+          # Priority-Eintrag, der die Groesse laut fonts.json nativ hat.
+          # Damit kennt Nix die benoetigten Pakete ohne jeden Font zu bauen.
+          fontsManifest = builtins.fromJSON (builtins.readFile ./fonts.json);
+          sizesByPkg = builtins.listToAttrs
+            (map (m: { name = m.name; value = m.sizes_px or []; }) fontsManifest);
+          ownersFor = px: builtins.filter
+            (n: builtins.elem px (sizesByPkg.${n} or [])) priority;
+          decided = builtins.filter (w: w.contenders != [])
+            (map (px: { inherit px; contenders = ownersFor px; })
+              (lib.range mergeCfg.min_size_px mergeCfg.max_size_px));
+          winnersObj = builtins.listToAttrs (map (w: {
+            name = toString w.px;
+            value = { winner = builtins.head w.contenders; contenders = w.contenders; };
+          }) decided);
+          winnersJson = pkgs.writeText "winners.json" (builtins.toJSON {
+            generated_by = "flake.nix from fonts.json + priority";
+            inherit (mergeCfg) min_size_px max_size_px;
+            winners = winnersObj;
+          });
+          # Nur die tatsaechlich gebrauchten Font-Pakete baut der Merge.
+          neededPackages = lib.unique (
+            map (w: builtins.head w.contenders) decided
+            ++ upscaleForced
+            ++ lib.optional mergeCfg.filler.enabled fillerPackage);
 
           # ------------------------------------------------------------------
           # 1) Direkt aus nixpkgs (Regel: wenn in nixpkgs vorhanden, NICHT fetchen)
@@ -70,6 +134,11 @@
             fixedsys-excelsior = pkgs.fixedsys-excelsior; # 12/16px
             font-3270 = pkgs._3270font; # 12/16px (rbanffy)
             envypn = pkgs.envypn-font; # 13/15px
+            # --- weitere echte Bitmap-Fonts direkt aus nixpkgs ---
+            efont = pkgs.efont-unicode; # 10/12/14/16/24px (BDF/PCF/OTB, efont japanisch)
+            uw-ttyp0 = pkgs.uw-ttyp0; # 11..18/22px (PCF/OTB/PSF)
+            unifont = pkgs.unifont; # 16px (BDF/PCF/OTB, GNU Unifont)
+            ark-pixel = pkgs.ark-pixel-font; # 10/12/16px (BDF/PCF + OTF/TTF)
           };
 
           # ------------------------------------------------------------------
@@ -323,10 +392,40 @@
             leggie = mkTecateFont "leggie" "leggie" "2024";
             uushi-lemon = mkTecateFont "uushi-lemon" "phallus" "2024"; # lemon-10 + uushi-11
             zevv-peep = mkTecateFont "zevv-peep" "zevv-peep" "2024"; # 14px
+            # --- weitere Fonts der Tecate/bitmap-fonts Sammlung ---
+            bitocra = mkTecateFont "bitocra" "bitocra" "2024"; # 4/5/7/10/11/13px
+            boxxy = mkTecateFont "boxxy" "boxxy" "2024"; # 14px
+            clearlyu = mkTecateFont "clearlyu" "clearlyu" "2024"; # 17px
+            ctrld-font = mkTecateFont "ctrld-font" "ctrld-font" "2024"; # 10/13/16px
+            dylex = mkTecateFont "dylex" "dylex" "2024"; # 10/13/14/20px
+            erusfont = mkTecateFont "erusfont" "erusfont" "2024"; # 11px
+            gilesorr = mkTecateFont "gilesorr" "gilesorr" "2024"; # 10px
+            jmk-x11-fonts = mkTecateFont "jmk-x11-fonts" "jmk-x11-fonts-3.0" "3.0"; # 10/11/13/15/20/24px
+            kourier = mkTecateFont "kourier" "kourier" "2024"; # 15px
+            lokaltog-fonts = mkTecateFont "lokaltog-fonts" "lokaltog-fonts" "2024"; # 10/11/12px
+            mplus = mkTecateFont "mplus" "mplus" "2024"; # 6/10/12px
+            opti = mkTecateFont "opti" "opti" "2024"; # 11px
+            orp-font = mkTecateFont "orp-font" "orp-font" "2024"; # 12px
+            pixelcarnage = mkTecateFont "pixelcarnage" "pixelcarnage" "2024"; # 14px
+            progsole = mkTecateFont "progsole" "progsole" "2024"; # 10px
+            raize = mkTecateFont "raize" "raize" "2024"; # 13/14/17/19px
+            sgi = mkTecateFont "sgi" "sgi" "2024"; # 7..16/18/24/36px (IRIX)
+            siji = mkTecateFont "siji" "siji" "2024"; # 10px (Icon-Font)
+            speedy = mkTecateFont "speedy" "speedy" "2024"; # 11/12px
+            sq = mkTecateFont "sq" "sq" "2024"; # 15px
+            tobi = mkTecateFont "tobi" "tobi" "2024"; # 12px
+            trisk = mkTecateFont "trisk" "trisk" "2024"; # 13px
+            xbmicons = mkTecateFont "xbmicons" "xbmicons" "2024"; # 12px (Icon-Font)
           };
 
           allFontsList = (builtins.attrValues nixpkgsFonts) ++ (builtins.attrValues customFonts);
           namedFonts = nixpkgsFonts // customFonts;
+
+          # pkgmap nur fuer die gebrauchten Pakete -> merged baut nur diese.
+          neededPkgMapTxt = pkgs.writeText "pkgmap-merged.txt"
+            (lib.concatMapStringsSep "\n"
+              (logical: "${namedFonts.${logical}} ${logical}")
+              neededPackages);
 
           all = pkgs.symlinkJoin {
             name = "muteshebbek-bitmap-fonts-all";
@@ -358,11 +457,9 @@
               runHook preInstall
               mkdir -p "$out/share/muteshebbek"
               python3 "$src" --pkgmap ${pkgMapTxt} --manifest ${./fonts.json} \
-                --priority ${./priority.json} \
                 --out "$out/share/muteshebbek/sizes.json" \
                 --summary "$out/share/muteshebbek/summary.json" \
-                --compare "$out/share/muteshebbek/sizes-compare.txt" \
-                --winners "$out/share/muteshebbek/winners.json"
+                --compare "$out/share/muteshebbek/sizes-compare.txt"
               runHook postInstall
             '';
             meta = with lib; {
@@ -371,13 +468,42 @@
             };
           };
 
+          # ---- merge-sizes-db: gleiche Messung, aber nur ueber die Pakete,
+          # die der Merge wirklich braucht. merged haengt dadurch nicht an
+          # allen 41 Font-Paketen.
+          mergeSizesDb = pkgs.stdenvNoCC.mkDerivation {
+            pname = "muteshebbek-merge-sizes-db";
+            version = "1";
+            src = ./tools/scan-sizes.py;
+            dontUnpack = true;
+            dontConfigure = true;
+            dontBuild = true;
+            nativeBuildInputs = [ sizesScanPython ];
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out/share/muteshebbek"
+              python3 "$src" --pkgmap ${neededPkgMapTxt} --manifest ${./fonts.json} \
+                --out "$out/share/muteshebbek/sizes.json" \
+                --summary "$out/share/muteshebbek/summary.json" \
+                --compare "$out/share/muteshebbek/sizes-compare.txt"
+              runHook postInstall
+            '';
+            meta = with lib; {
+              description = "sizes.json nur fuer die Merge-Pakete (von flake.nix aus fonts.json+priority gewaehlt)";
+              license = licenses.free;
+            };
+          };
+
           # ---- merged: DER Font. Ein Strike pro px, Gewinner per priority.
           # Zusaetzlich ein TTF mit echten glyf-Outlines (aus dem jeweils
           # groessten Bitmap-Strike getraced) fuer Apps ohne Bitmap-/OTB-
           # Support; die Bitmap-Strikes bleiben im TTF erhalten.
+          # Filler-TTF: wird fuer px-Luecken (kein Bitmap-Font erreichbar)
+          # 1-bit gerastert und als zusaetzlicher Strike eingemerged.
+          fillerTtf = "${namedFonts.cozette}/share/fonts/truetype/CozetteVector.ttf";
           merged = pkgs.stdenvNoCC.mkDerivation {
             pname = "muteshebbek";
-            version = "5";
+            version = "6";
             src = ./tools;
             dontUnpack = true;
             dontConfigure = true;
@@ -386,18 +512,19 @@
             installPhase = ''
               runHook preInstall
               mkdir -p "$out/share/fonts/OTB" "$out/share/fonts/TTF" "$out/share/muteshebbek"
-              python3 "$src/build-merged.py" --pkgmap ${pkgMapTxt} \
-                --sizes ${sizesDb}/share/muteshebbek/sizes.json \
-                --winners ${sizesDb}/share/muteshebbek/winners.json \
-                --priority ${./priority.json} \
-                --upscale ${./upscale.json} \
+              python3 "$src/build-merged.py" --pkgmap ${neededPkgMapTxt} \
+                --sizes ${mergeSizesDb}/share/muteshebbek/sizes.json \
+                --winners ${winnersJson} \
+                --merge ${mergeJson} \
+                --force ${lib.escapeShellArgs upscaleForced} \
+                --filler-ttf "${fillerTtf}" \
                 --out "$out/share/fonts/OTB/Muteshebbek.otb" \
                 --out-ttf "$out/share/fonts/TTF/Muteshebbek.ttf" \
                 --report "$out/share/muteshebbek/merged-report.json"
               runHook postInstall
             '';
             meta = with lib; {
-              description = "Muteshebbek: alle Bitmap-Fonts in einem OTB plus Outline-TTF, ein Strike pro px-Groesse (Gewinner per priority.json)";
+              description = "Muteshebbek: die gebrauchten Bitmap-Fonts in einem OTB plus Outline-TTF, ein Strike pro px-Groesse (Gewinner per priority in flake.nix)";
               license = licenses.free;
             };
           };
@@ -438,6 +565,8 @@
           packages = namedFonts // {
             inherit all merged;
             "sizes-db" = sizesDb;
+            "merge-sizes-db" = mergeSizesDb;
+            "merge-winners" = winnersJson;
             "all-fonts-preview" = allFontsPreview;
             default = all;
             fonts-manifest = pkgs.stdenvNoCC.mkDerivation {
@@ -474,15 +603,16 @@
           };
 
           # ---- dry-run: welche Source-Font gewinnt pro px (baut nichts).
-          # Aufruf: nix run .#dry-run  (liest priority.json + sizes-db)
+          # Aufruf: nix run .#dry-run  (liest winnersJson + merge-sizes-db)
           apps.dry-run =
             let
               dry-run-prog = pkgs.writeShellScriptBin "muteshebbek-dry-run" ''
                 exec ${sizesScanPython}/bin/python3 ${./tools/build-merged.py} --dry-run \
-                  --sizes ${sizesDb}/share/muteshebbek/sizes.json \
-                  --winners ${sizesDb}/share/muteshebbek/winners.json \
-                  --priority ${./priority.json} \
-                  --upscale ${./upscale.json}
+                  --sizes ${mergeSizesDb}/share/muteshebbek/sizes.json \
+                  --winners ${winnersJson} \
+                  --merge ${mergeJson} \
+                  --force ${lib.escapeShellArgs upscaleForced} \
+                  --filler-ttf "${fillerTtf}"
               '';
             in
             {
@@ -502,12 +632,22 @@
             '';
             priority-valid = pkgs.runCommand "check-priority"
               { nativeBuildInputs = [ sizesScanPython ]; } ''
-              python3 ${./tools/check-priority.py} ${./priority.json} ${lib.escapeShellArgs (builtins.attrNames namedFonts)}
+              python3 ${./tools/check-priority.py} ${mergeJson} ${lib.escapeShellArgs (builtins.attrNames namedFonts)}
               touch "$out"
             '';
-            upscale-valid = pkgs.runCommand "check-upscale"
+            merge-valid = pkgs.runCommand "check-merge"
               { nativeBuildInputs = [ sizesScanPython ]; } ''
-              python3 ${./tools/check-upscale.py} ${./upscale.json} ${lib.escapeShellArgs (builtins.attrNames namedFonts)}
+              python3 ${./tools/check-merge.py} ${mergeJson}
+              touch "$out"
+            '';
+            # fonts.json ist die Quelle der Merge-Entscheidung -> deklarierte
+            # Groessen muessen zu den echten Headern passen.
+            manifest-consistent = pkgs.runCommand "check-manifest-consistent" { } ''
+              if grep -q '^MISMATCH' ${sizesDb}/share/muteshebbek/sizes-compare.txt; then
+                echo "fonts.json sizes_px is out of sync with the real headers:" >&2
+                grep '^MISMATCH' ${sizesDb}/share/muteshebbek/sizes-compare.txt >&2
+                exit 1
+              fi
               touch "$out"
             '';
             merged-valid = pkgs.runCommand "check-merged"

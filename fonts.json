@@ -55,7 +55,9 @@
     "name": "gohufont",
     "sizes_px": [
       11,
-      14
+      14,
+      16,
+      20
     ],
     "origin": "nixpkgs",
     "nixpkgs_attr": "gohufont",
@@ -143,10 +145,14 @@
   {
     "name": "proggyfonts",
     "sizes_px": [
+      7,
+      9,
       10,
       11,
       12,
-      13
+      13,
+      14,
+      16
     ],
     "origin": "nixpkgs",
     "nixpkgs_attr": "proggyfonts",
@@ -157,8 +163,9 @@
     "name": "dina",
     "sizes_px": [
       8,
-      9,
-      10
+      10,
+      12,
+      13
     ],
     "origin": "nixpkgs",
     "nixpkgs_attr": "dina-font",
@@ -168,8 +175,18 @@
   {
     "name": "profont",
     "sizes_px": [
+      9,
+      10,
       11,
-      12
+      12,
+      14,
+      15,
+      16,
+      17,
+      21,
+      22,
+      28,
+      29
     ],
     "origin": "nixpkgs",
     "nixpkgs_attr": "profont",
@@ -179,7 +196,10 @@
   {
     "name": "termsyn",
     "sizes_px": [
-      12
+      11,
+      12,
+      13,
+      14
     ],
     "origin": "nixpkgs",
     "nixpkgs_attr": "termsyn",
@@ -190,7 +210,8 @@
     "name": "kirsch",
     "sizes_px": [
       16,
-      32
+      32,
+      48
     ],
     "cell": [
       "6x16",
@@ -203,13 +224,12 @@
   },
   {
     "name": "vt323",
-    "sizes_px": [
-      16
-    ],
+    "sizes_px": [],
     "origin": "nixpkgs",
     "nixpkgs_attr": "vt323",
     "upstream": "https://fonts.google.com/specimen/VT323",
-    "preview": "https://fonts.google.com/specimen/VT323"
+    "preview": "https://fonts.google.com/specimen/VT323",
+    "scalable": true
   },
   {
     "name": "fixedsys-excelsior",
@@ -224,14 +244,12 @@
   },
   {
     "name": "font-3270",
-    "sizes_px": [
-      12,
-      16
-    ],
+    "sizes_px": [],
     "origin": "nixpkgs",
     "nixpkgs_attr": "_3270font",
     "upstream": "https://github.com/rbanffy/3270font",
-    "preview": "https://rbanffy.github.io/3270font/"
+    "preview": "https://rbanffy.github.io/3270font/",
+    "scalable": true
   },
   {
     "name": "envypn",
@@ -259,7 +277,8 @@
     "sizes_px": [
       11,
       12,
-      13
+      13,
+      14
     ],
     "origin": "source",
     "url": "https://github.com/Tecate/bitmap-fonts",
@@ -292,7 +311,10 @@
   {
     "name": "tamsynmod",
     "sizes_px": [
-      12
+      12,
+      14,
+      15,
+      17
     ],
     "origin": "source",
     "url": "https://github.com/Tecate/bitmap-fonts",
@@ -303,12 +325,22 @@
   {
     "name": "stlarch-font",
     "sizes_px": [
-      11
+      10
     ],
     "origin": "source",
     "url": "https://github.com/Tecate/bitmap-fonts",
     "subdir": "bitmap/stlarch",
     "upstream": "http://sourceforge.net/projects/stlarchfont/",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "leggie",
+    "sizes_px": [
+      12
+    ],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "leggie",
     "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
   },
   {
@@ -322,24 +354,15 @@
     "preview": "https://github.com/Tecate/bitmap-fonts/raw/master/screenshots/gomme-20.png"
   },
   {
-    "name": "lemon",
+    "name": "uushi-lemon",
     "sizes_px": [
-      10
-    ],
-    "origin": "source",
-    "url": "https://github.com/Tecate/bitmap-fonts",
-    "subdir": "bitmap/phallus",
-    "preview": "https://github.com/Tecate/bitmap-fonts/raw/master/screenshots/lemon-10.png"
-  },
-  {
-    "name": "uushi",
-    "sizes_px": [
+      10,
       11
     ],
     "origin": "source",
     "url": "https://github.com/Tecate/bitmap-fonts",
     "subdir": "bitmap/phallus",
-    "preview": "https://github.com/Tecate/bitmap-fonts/raw/master/screenshots/uushi-11.png"
+    "preview": "https://github.com/Tecate/bitmap-fonts/raw/master/screenshots/lemon-10.png"
   },
   {
     "name": "lode",
@@ -374,8 +397,11 @@
   {
     "name": "haxor",
     "sizes_px": [
+      11,
       12,
-      15
+      15,
+      16,
+      18
     ],
     "origin": "source",
     "url": "https://github.com/Tecate/bitmap-fonts",
@@ -385,7 +411,7 @@
   {
     "name": "dweep",
     "sizes_px": [
-      12
+      11
     ],
     "origin": "source",
     "url": "https://github.com/Tecate/bitmap-fonts",
@@ -395,7 +421,9 @@
   {
     "name": "zevv-peep",
     "sizes_px": [
-      14
+      14,
+      16,
+      20
     ],
     "origin": "source",
     "url": "https://github.com/Tecate/bitmap-fonts",
@@ -444,29 +472,31 @@
   },
   {
     "name": "press-start-2p",
-    "sizes_px": [
-      8
-    ],
+    "sizes_px": [],
     "origin": "source",
     "url": "https://github.com/codeman38/PressStart2P",
     "ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/pressstart2p/PressStart2P-Regular.ttf",
-    "preview": "https://fonts.google.com/specimen/Press+Start+2P"
+    "preview": "https://fonts.google.com/specimen/Press+Start+2P",
+    "scalable": true
   },
   {
     "name": "silkscreen",
-    "sizes_px": [
-      8
-    ],
+    "sizes_px": [],
     "origin": "source",
     "ttf_regular": "https://raw.githubusercontent.com/google/fonts/main/ofl/silkscreen/Silkscreen-Regular.ttf",
     "ttf_bold": "https://raw.githubusercontent.com/google/fonts/main/ofl/silkscreen/Silkscreen-Bold.ttf",
-    "preview": "https://www.dafont.com/de/silkscreen.font"
+    "preview": "https://www.dafont.com/de/silkscreen.font",
+    "scalable": true
   },
   {
     "name": "artwiz-aleczapka",
     "sizes_px": [
+      8,
       10,
-      11
+      11,
+      13,
+      14,
+      16
     ],
     "faces": [
       "anorexia",
@@ -523,11 +553,232 @@
   },
   {
     "name": "font-04b-03",
-    "sizes_px": [
-      8
-    ],
+    "sizes_px": [],
     "origin": "source",
     "url": "https://dl.dafont.com/dl/?f=04b_03",
-    "preview": "https://www.dafont.com/de/04b-03.font"
+    "preview": "https://www.dafont.com/de/04b-03.font",
+    "scalable": true
+  },
+  {
+    "name": "efont",
+    "sizes_px": [10, 12, 14, 16, 24],
+    "origin": "nixpkgs",
+    "nixpkgs_attr": "efont-unicode",
+    "upstream": "http://openlab.jp/efont/",
+    "preview": "https://github.com/Tecate/bitmap-fonts"
+  },
+  {
+    "name": "uw-ttyp0",
+    "sizes_px": [11, 12, 13, 14, 15, 16, 17, 18, 22],
+    "origin": "nixpkgs",
+    "nixpkgs_attr": "uw-ttyp0",
+    "upstream": "https://github.com/halloleo/uw-ttyp0",
+    "preview": "https://github.com/halloleo/uw-ttyp0"
+  },
+  {
+    "name": "unifont",
+    "sizes_px": [16],
+    "cell": ["8x16"],
+    "origin": "nixpkgs",
+    "nixpkgs_attr": "unifont",
+    "upstream": "https://unifoundry.com/unifont/",
+    "preview": "https://unifoundry.com/unifont/index.html"
+  },
+  {
+    "name": "ark-pixel",
+    "sizes_px": [10, 12, 16],
+    "origin": "nixpkgs",
+    "nixpkgs_attr": "ark-pixel-font",
+    "upstream": "https://github.com/TakWolf/ark-pixel-font",
+    "preview": "https://github.com/TakWolf/ark-pixel-font"
+  },
+  {
+    "name": "sgi",
+    "sizes_px": [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 24, 36],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/sgi",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "mplus",
+    "sizes_px": [6, 10, 12],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/mplus",
+    "upstream": "https://github.com/coz-m/MPLUS_FONTS",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "jmk-x11-fonts",
+    "sizes_px": [10, 11, 13, 15, 20, 24],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/jmk-x11-fonts-3.0",
+    "upstream": "https://www.jmknoble.net/fonts/",
+    "preview": "https://www.jmknoble.net/fonts/"
+  },
+  {
+    "name": "lokaltog-fonts",
+    "sizes_px": [10, 11, 12],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/lokaltog-fonts",
+    "upstream": "https://github.com/Lokaltog/lokaltog-fonts",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "ctrld-font",
+    "sizes_px": [10, 13, 16],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/ctrld-font",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "dylex",
+    "sizes_px": [10, 13, 14, 20],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/dylex",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "raize",
+    "sizes_px": [13, 14, 17, 19],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/raize",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "bitocra",
+    "sizes_px": [4, 5, 7, 10, 11, 13],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/bitocra",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "speedy",
+    "sizes_px": [11, 12],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/speedy",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "orp-font",
+    "sizes_px": [12],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/orp-font",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "progsole",
+    "sizes_px": [10],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/progsole",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "gilesorr",
+    "sizes_px": [10],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/gilesorr",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "opti",
+    "sizes_px": [11],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/opti",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "pixelcarnage",
+    "sizes_px": [14],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/pixelcarnage",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "tobi",
+    "sizes_px": [12],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/tobi",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "erusfont",
+    "sizes_px": [11],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/erusfont",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "trisk",
+    "sizes_px": [13],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/trisk",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "boxxy",
+    "sizes_px": [14],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/boxxy",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "kourier",
+    "sizes_px": [15],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/kourier",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "sq",
+    "sizes_px": [15],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/sq",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "siji",
+    "sizes_px": [10],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/siji",
+    "upstream": "https://github.com/stark/siji",
+    "preview": "https://github.com/stark/siji"
+  },
+  {
+    "name": "xbmicons",
+    "sizes_px": [12],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/xbmicons",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
+  },
+  {
+    "name": "clearlyu",
+    "sizes_px": [17],
+    "origin": "source",
+    "url": "https://github.com/Tecate/bitmap-fonts",
+    "subdir": "bitmap/clearlyu",
+    "upstream": "http://www.integral.ca/~mgk25/ucs-fonts.html",
+    "preview": "https://github.com/Tecate/bitmap-fonts/tree/master/screenshots"
   }
 ]

@@ -8,7 +8,7 @@ reported (see sizes-compare.txt) and never fail the build.
 import json
 import sys
 
-KNOWN_FORMATS = {"bdf", "pcf", "otb", "otf", "ttf", "ttc", "woff", "woff2",
+KNOWN_FORMATS = {"bdf", "pcf", "otb", "otf", "ttf", "ttc", "otc", "woff", "woff2",
                  "psf", "fon", "dfont", "fnt"}
 
 

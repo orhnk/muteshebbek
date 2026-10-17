@@ -128,6 +128,12 @@ def convert(in_path, out_path):
             bmp = slot.bitmap
             w, h = bmp.width, bmp.rows
             dw = slot.advance.x >> 6
+            # Some PCFs (profont) declare a full-cell all-zero bitmap for
+            # every blank glyph (space, NUL, control chars). fonttosfnt turns
+            # those into corrupt EBDT entries that FreeType rejects with
+            # "invalid argument". Flag them so they can be left out of the
+            # strike; a renderer then falls back to the (blank) outline.
+            blank_full = False
             if w > 0 and h > 0:
                 pitch = bmp.pitch
                 buf = bytes(bmp.buffer)
@@ -141,11 +147,19 @@ def convert(in_path, out_path):
                 if pitch < 0:
                     rows.reverse()
                 xoff, yoff = slot.bitmap_left, slot.bitmap_top - h
+                blank_full = ((w > 1 or h > 1)
+                              and not any(int(row, 16) for row in rows))
             else:
                 # e.g. space: advance but no ink
                 rows, xoff, yoff = ["00"], 0, 0
                 w, h = 1, 1
-            glyphs.append((code, dw, w, h, xoff, yoff, rows))
+            glyphs.append((code, dw, w, h, xoff, yoff, rows, blank_full))
+        # Drop the full-cell blanks, but never empty the strike entirely
+        # (an all-blank face would lose every glyph).
+        kept = [g for g in glyphs if not g[7]]
+        if kept:
+            glyphs = kept
+        glyphs = [g[:7] for g in glyphs]
     glyphs.sort()
 
     max_w = max(g[2] for g in glyphs)

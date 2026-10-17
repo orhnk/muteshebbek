@@ -21,7 +21,17 @@ KNOWN_BROKEN_MERGED = {17, 22, 29}
 # (fc-scan: 6.64/9.3/10.6/12.0px), so Pillow renders them blank or rejects
 # the size outright. fonttosfnt (the real pipeline) consumes them fine --
 # the merged 7px strike built from WebbyCaps renders crisp.
-KNOWN_BROKEN_SOURCES = {("proggyfonts", px) for px in (7, 9, 11, 12, 13, 14)}
+#
+# kourier/opti/pixelcarnage/speedy embed a 96-dpi resolution in their XLFD
+# (e.g. -windows-Kourier-...-15-90-96-96-...), so Pillow's point-size-based
+# API cannot map the integer pixel size onto FreeType's fixed bitmap strike:
+# it either raises "invalid pixel size" or rasterizes an empty cell. They
+# are still valid 15/11/14/11/12px bitmap sources for the fonttosfnt merge.
+KNOWN_BROKEN_SOURCES = (
+    {("proggyfonts", px) for px in (7, 9, 11, 12, 13, 14)}
+    | {("kourier", 15), ("opti", 11), ("pixelcarnage", 14),
+       ("speedy", 11), ("speedy", 12)}
+)
 
 
 def fail(msg):

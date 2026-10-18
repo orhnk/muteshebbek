@@ -61,9 +61,23 @@ def main():
         dups = sorted({n for n in pri if pri.count(n) > 1})
         fail(f"priority has duplicates: {dups}")
 
+    sel = cfg.get("size_select", {})
+    if not isinstance(sel, dict):
+        fail("size_select must be an object {package: [px, ...]}")
+    for pkg, sizes in sel.items():
+        if not isinstance(pkg, str) or not isinstance(sizes, list) or not sizes \
+                or not all(isinstance(s, int) and not isinstance(s, bool)
+                           and s > 0 for s in sizes):
+            fail(f"size_select[{pkg!r}] must be a non-empty list of "
+                 f"positive ints, got {sizes!r}")
+        if sizes != sorted(set(sizes)):
+            fail(f"size_select[{pkg!r}] must be sorted and duplicate-free, "
+                 f"got {sizes!r}")
+
     print(f"check-merge: OK: {lo}-{hi}px, native_beats_scaled="
           f"{cfg['native_beats_scaled']}, upscale_scope={cfg['upscale_scope']}, "
-          f"filler={filler.get('scope')}, {len(pri)} priority entries")
+          f"filler={filler.get('scope')}, {len(pri)} priority entries, "
+          f"{len(sel)} size_select entries")
 
 
 if __name__ == "__main__":

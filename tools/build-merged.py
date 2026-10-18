@@ -19,7 +19,9 @@ load_merge_config):
 3. Tie-break: with native_beats_scaled=true (default) each px prefers a native
    strike; only within the same category (native first, then scaled) does
    the priority list (merge.json) decide. With false, priority decides
-   globally. Losers stay in the report so every duel is visible.
+   globally. Losers stay in the report so every duel is visible. size_select
+   (merge.json, "font:size=9,12,13" in flake.nix) restricts a font to the
+   listed sizes for both native wins and scaling sources.
 
 4. Filler: px sizes no candidate reaches (e.g. 19px or 77px) are filled with a
    bitmap strike rasterized from a TTF (CozetteVector) by tools/ttf2bdf.py, so
@@ -83,6 +85,7 @@ DEFAULT_MERGE = {
     "max_strikes": 0,
     "max_output_mb": 0,
     "priority": [],
+    "size_select": {},
 }
 
 
@@ -123,6 +126,17 @@ def load_merge_config(path):
         if not isinstance(cfg[key], int) or cfg[key] < 0:
             print(f"ERROR: merge {key} must be an int >= 0", file=sys.stderr)
             sys.exit(1)
+    sel = cfg["size_select"]
+    if not isinstance(sel, dict) or any(
+            not isinstance(pkg, str)
+            or not isinstance(sizes, list)
+            or not sizes
+            or not all(isinstance(s, int) and not isinstance(s, bool) and s > 0
+                       for s in sizes)
+            for pkg, sizes in sel.items()):
+        print("ERROR: merge size_select must be {package: [px, ...]}",
+              file=sys.stderr)
+        sys.exit(1)
     return cfg
 
 
@@ -765,6 +779,17 @@ def main():
     for e in files:
         e["_pkg"] = e["package"]
     by_pkg_px, native_sizes = build_native_index(files)
+    # size_select restricts a font's native sizes for the merge: it can win
+    # natively and be upscaled only from these px; all other real sizes of
+    # the font stay out of the merged result.
+    for pkg, sizes in (merge.get("size_select") or {}).items():
+        real = native_sizes.get(pkg, [])
+        missing = sorted(set(sizes) - set(real))
+        if missing:
+            print(f"WARN: size_select {pkg}: no native {missing} "
+                  f"(real: {real})", file=sys.stderr)
+        if pkg in native_sizes:
+            native_sizes[pkg] = sorted(set(sizes) & set(real))
     best_native = make_best_native(by_pkg_px)
 
     # Which fonts get upscaled? Winners are always selected; "all" selects

@@ -33,8 +33,8 @@
           priority = [
             "cozette" "uushi-lemon" "scientifica" "tewi" "creep" "kakwa"
             "cherry-bitmap" "tamsyn" "dweep" "profont" "montecarlo"
-            "proggyfonts" "termsyn" "terminusmod" "ohsnap" "kirsch"
-            "tamzen" "gohufont" "creep2" "envypn" "dina" "unscii"
+            # "proggyfonts" "termsyn" "terminusmod" "ohsnap" "kirsch"
+            # "tamzen" "gohufont" "creep2" "envypn" "dina" "unscii"
             # --- Rest vorerst aus dem Merge ausgeschlossen ---
             # (weglassen = nie Gewinner, kein Upscale, nicht in neededPackages)
             # "ibmfonts" "misc-fixed-ucs" "artwiz-aleczapka" "tamsynmod"

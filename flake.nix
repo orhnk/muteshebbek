@@ -35,17 +35,19 @@
             "cherry-bitmap" "tamsyn" "dweep" "profont" "montecarlo"
             "proggyfonts" "termsyn" "terminusmod" "ohsnap" "kirsch"
             "tamzen" "gohufont" "creep2" "envypn" "dina" "unscii"
-            "ibmfonts" "misc-fixed-ucs" "artwiz-aleczapka" "tamsynmod"
-            "stlarch-font" "fixedsys-excelsior" "font-3270" "gomme"
-            "knxt" "haxor" "lode" "leggie" "vt323" "zevv-peep"
-            "press-start-2p" "silkscreen" "font-04b-03" "terminus" "spleen"
+            # --- Rest vorerst aus dem Merge ausgeschlossen ---
+            # (weglassen = nie Gewinner, kein Upscale, nicht in neededPackages)
+            # "ibmfonts" "misc-fixed-ucs" "artwiz-aleczapka" "tamsynmod"
+            # "stlarch-font" "fixedsys-excelsior" "font-3270" "gomme"
+            # "knxt" "haxor" "lode" "leggie" "vt323" "zevv-peep"
+            # "press-start-2p" "silkscreen" "font-04b-03" "terminus" "spleen"
             # --- Erweiterung: weitere echte Bitmap-Fonts aus nixpkgs ---
-            "efont" "uw-ttyp0" "unifont" "ark-pixel"
+            # "efont" "uw-ttyp0" "unifont" "ark-pixel"
             # --- Erweiterung: Tecate/bitmap-fonts Sammlung ---
-            "sgi" "mplus" "jmk-x11-fonts" "lokaltog-fonts" "ctrld-font"
-            "dylex" "raize" "bitocra" "speedy" "orp-font" "progsole"
-            "gilesorr" "opti" "pixelcarnage" "tobi" "erusfont" "trisk"
-            "boxxy" "kourier" "sq" "siji" "xbmicons" "clearlyu"
+            # "sgi" "mplus" "jmk-x11-fonts" "lokaltog-fonts" "ctrld-font"
+            # "dylex" "raize" "bitocra" "speedy" "orp-font" "progsole"
+            # "gilesorr" "opti" "pixelcarnage" "tobi" "erusfont" "trisk"
+            # "boxxy" "kourier" "sq" "siji" "xbmicons" "clearlyu"
           ];
           mergeCfg = {
             min_size_px = 7;
@@ -60,7 +62,8 @@
           mergeJson = pkgs.writeText "merge.json" (builtins.toJSON mergeCfg);
 
           # Pakete, die auch ohne nativen Gewinn hochskaliert werden.
-          upscaleForced = [ "dina" "uushi-lemon" "cherry-bitmap" "zevv-peep" "cozette" "tamzen" ];
+          # zevv-peep entfernt, weil es nicht mehr in der priority steht.
+          upscaleForced = [ "dina" "uushi-lemon" "cherry-bitmap" "cozette" "tamzen" ];
           fillerPackage = "cozette";
 
           # Pure Gewinnerberechnung: pro Ziel-px gewinnt der hoechste

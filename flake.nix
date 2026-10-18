@@ -30,14 +30,24 @@
           # frueher in priority.json / merge.json / upscale.json stand, lebt
           # jetzt hier; die Python-Tools bekommen daraus generierte JSONs.
           # ------------------------------------------------------------------
+          #
+          # 7,8 misc-fixed-ucs-7px
+          # 9 tamsyn
+          # 10, uushi-lemon
+          # 11, dweep-11px
+          # 12, orp-font-12px
+          # 13, cozette
+          # 15, sq
+          # * , cozettevector
+          # 
           priority = [
-            "cozette" "uushi-lemon" "scientifica" "tewi" "creep" "kakwa"
-            "cherry-bitmap" "tamsyn" "dweep" "profont" "montecarlo"
+            "misc-fixed-ucs" "tamsyn" "cozette" "uushi-lemon" "dweep" "sq" 
+            # "tewi" "scientifica" "kakwa" "cherry-bitmap" "profont" "montecarlo"
             # "proggyfonts" "termsyn" "terminusmod" "ohsnap" "kirsch"
             # "tamzen" "gohufont" "creep2" "envypn" "dina" "unscii"
             # --- Rest vorerst aus dem Merge ausgeschlossen ---
             # (weglassen = nie Gewinner, kein Upscale, nicht in neededPackages)
-            # "ibmfonts" "misc-fixed-ucs" "artwiz-aleczapka" "tamsynmod"
+            # "ibmfonts" "artwiz-aleczapka" "tamsynmod"
             # "stlarch-font" "fixedsys-excelsior" "font-3270" "gomme"
             # "knxt" "haxor" "lode" "leggie" "vt323" "zevv-peep"
             # "press-start-2p" "silkscreen" "font-04b-03" "terminus" "spleen"
@@ -47,8 +57,36 @@
             # "sgi" "mplus" "jmk-x11-fonts" "lokaltog-fonts" "ctrld-font"
             # "dylex" "raize" "bitocra" "speedy" "orp-font" "progsole"
             # "gilesorr" "opti" "pixelcarnage" "tobi" "erusfont" "trisk"
-            # "boxxy" "kourier" "sq" "siji" "xbmicons" "clearlyu"
+            # "boxxy" "kourier" "siji" "xbmicons" "clearlyu" "creep"
           ];
+
+          # Pro-Font Groessenauswahl fuer den Merge, Format:
+          #   "tamsyn:size=9,12,13"
+          # Der Font darf dann nur bei diesen Groessen nativ gewinnen und
+          # nur aus ihnen hochskaliert werden. Alle anderen echten Groessen
+          # bleiben in `all`, aber nicht im Merge. Die Groessen muessen zur
+          # fonts.json (echte Header) passen, sonst gibt es einen Fehler.
+          sizeSelectEntries = [
+            "tamsyn:size=9"
+            "misc-fixed-ucs:size=7,8"
+            "uushi-lemon:size=10"
+            "dweep:size=11"
+          ];
+          parseSizeSelect = entry:
+            let
+              m = builtins.match "([^:]+):size=([0-9]+(,[0-9]+)*)" entry;
+            in
+              if m == null
+              then throw "size_select: '${entry}' erwartet das Format 'font:size=9,12,13'"
+              else {
+                name = builtins.head m;
+                sizes = lib.sort (a: b: a < b)
+                  (lib.unique (map lib.toInt (lib.splitString "," (builtins.elemAt m 1))));
+              };
+          sizeSelect = builtins.listToAttrs (map
+            (e: let p = parseSizeSelect e; in { name = p.name; value = p.sizes; })
+            sizeSelectEntries);
+
           mergeCfg = {
             min_size_px = 7;
             max_size_px = 100;
@@ -57,6 +95,7 @@
             filler = { enabled = true; scope = "both"; font = "cozette-vector"; };
             max_strikes = 0;
             max_output_mb = 0;
+            size_select = sizeSelect;
             inherit priority;
           };
           mergeJson = pkgs.writeText "merge.json" (builtins.toJSON mergeCfg);
@@ -68,10 +107,22 @@
 
           # Pure Gewinnerberechnung: pro Ziel-px gewinnt der hoechste
           # Priority-Eintrag, der die Groesse laut fonts.json nativ hat.
+          # size_select schraenkt das pro Font auf die gewaehlten Groessen
+          # ein (native Gewinner UND Scaled-Quellen).
           # Damit kennt Nix die benoetigten Pakete ohne jeden Font zu bauen.
           fontsManifest = builtins.fromJSON (builtins.readFile ./fonts.json);
-          sizesByPkg = builtins.listToAttrs
+          realSizesByPkg = builtins.listToAttrs
             (map (m: { name = m.name; value = m.sizes_px or []; }) fontsManifest);
+          sizeSelectErrors = lib.flatten (lib.mapAttrsToList
+            (name: sizes:
+              if !(builtins.hasAttr name realSizesByPkg)
+              then ["size_select: unbekannter Font '${name}'"]
+              else map (s: "size_select: ${name} hat kein natives ${toString s}px")
+                (builtins.filter (s: !(builtins.elem s realSizesByPkg.${name})) sizes))
+            sizeSelect);
+          sizesByPkg = if sizeSelectErrors == []
+            then builtins.mapAttrs (name: real: sizeSelect.${name} or real) realSizesByPkg
+            else throw (lib.concatStringsSep "\n" sizeSelectErrors);
           ownersFor = px: builtins.filter
             (n: builtins.elem px (sizesByPkg.${n} or [])) priority;
           decided = builtins.filter (w: w.contenders != [])
@@ -82,7 +133,7 @@
             value = { winner = builtins.head w.contenders; contenders = w.contenders; };
           }) decided);
           winnersJson = pkgs.writeText "winners.json" (builtins.toJSON {
-            generated_by = "flake.nix from fonts.json + priority";
+            generated_by = "flake.nix from fonts.json + priority + size_select";
             inherit (mergeCfg) min_size_px max_size_px;
             winners = winnersObj;
           });
